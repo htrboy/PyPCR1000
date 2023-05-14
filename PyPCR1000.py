@@ -8,15 +8,15 @@ Change all Print() statements to logging.level (debug, info)
 
 Change Serialport calls to latest pyserial
 
-Not 100% sure what LOGGER was - need to look at logic around all 'if LOGGER.state'
+Not 100% sure what LOGGER was - Look at logic around all 'if LOGGER.state'
 
 Fixed Serial port settings - radio was not getting set to 38400 - this fixed
 several issues:  Bandscope works, signal meter works
 
-Added MouseWheel tuning
+Added MouseWheel Tuning 
 '''
 
-# Edited 5-9-2023 0627
+# Edited 5-7-2023 1700
 
 import sys, tkinter
 from tkinter.scrolledtext import ScrolledText
@@ -31,6 +31,7 @@ from serial.tools.list_ports import comports
 import configparser
 import os #troubleshooting
 from PIL import Image
+import codecs
 import logging
 import csv
 
@@ -44,7 +45,7 @@ config = configparser.ConfigParser()
 # TODO: change to log-to-file
 logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.DEBUG) #levels: INFO, WARNING, CRITICAL
+    level=logging.INFO) #levels: INFO, WARNING, CRITICAL
 
 SerialPollMillisecs = 10	# Time to poll serial port
 ScanMillisecs = 100         # Time to pause at each frequency when scanning the band
@@ -133,6 +134,7 @@ def GetTextExtent(window, text, font):
 
 def MakeFreq(text):
     """Return integer frequency for text."""
+    text.strip()
     tail = text[-1] # text must be stripped: text.strip()
     if tail in "Kk":
         mult = 1000
@@ -521,8 +523,10 @@ class Application(tkinter.Tk):
         #
         d = {}
         with open(r'./Stations.csv', "r") as file:
-            has_header = csv.Sniffer().has_header(file.read(1024))
-            file.seek(0) #rewind
+            #has_header = csv.Sniffer().has_header(file.read(1024))
+            #logging.info("header: %s", has_header)
+            #file.seek(0) #rewind
+            has_header = True # Sniffer not working - force it
             reader = csv.reader(file)
             if has_header:
                 next(reader) #skip the header row
@@ -535,6 +539,7 @@ class Application(tkinter.Tk):
             
         self.Stations = d
         self.ListStations = list(d.keys())
+        self.ListStations.sort()
         self.changedStations = 0
 
 
@@ -927,7 +932,7 @@ class Application(tkinter.Tk):
 
     def OnButtonSerial(self):
         global LOGGER		
-        if isinstance(DialogSerial):
+        if isinstance(LOGGER, DialogSerial):
             LOGGER.focus_set()	# Do not create two serial dialog boxes
         elif self.radio.serialport:
             LOGGER = DialogSerial(self.radio.serialport, None)
@@ -2371,17 +2376,15 @@ class DialogSerial(tkinter.Toplevel):
         l.pack(side='left', anchor='w')
 
         self.widgetPort = []			 # The widgets to select the port
-
         for port in self.portNames:
             b = tkinter.Radiobutton(frm, text=str(port), padx=3, font=bfont, variable=self.varPort, value=port)            
             b.pack(side='left', anchor='w')
             self.widgetPort.append(b)
         
         # THIS WAS FOR ENTERING PORTNAME MANUALLY
-        #b = tkinter.Radiobutton(frm, text='Name:', font=bfont, variable=self.varPort, value=-1)
-        #self.widgetPort.append(b)
-        #b.pack(side='left', anchor='w')
-
+        b = tkinter.Radiobutton(frm, text='Name:', font=bfont, variable=self.varPort, value=-1)
+        self.widgetPort.append(b)
+        b.pack(side='left', anchor='w')
         
         e = tkinter.Entry(frm, bg=White, width=18, textvariable=self.varPort)
         e.pack(side='left', anchor='w', expand=1, fill='x')
@@ -2411,10 +2414,12 @@ class DialogSerial(tkinter.Toplevel):
             self.port.set(portname)
         else:
             #self.varPort.set("")
-            self.varPort.set(portname)
-        
+            self.varPort.set(portname)        
 
         # end of second row
+
+
+
         frm = tkinter.Frame(self) # last row
         frm.pack(side='bottom', anchor='s', fill='x')
         l = tkinter.Label(frm, text='Write to port', font=lfont)
@@ -2429,7 +2434,10 @@ class DialogSerial(tkinter.Toplevel):
         entry = tkinter.Entry(frm, bg=White, textvariable=self.varSend)
         entry.pack(side='left', anchor='w', expand=1, fill='x')
         entry.bind('<Key-Return>', self.ToPort)
+
         # end of last row.
+
+
 
         # remaining space is the text display
         #self.canvas = ScrolledText.ScrolledText(self, width=1, height=10, relief='sunken', bg=White)
@@ -2472,41 +2480,38 @@ class DialogSerial(tkinter.Toplevel):
     def Open(self):
         #if self.serialport.isOpen(self):
         #if self.serialport.is_open(self):
-        if not self.serialport.isOpen:
-        #if self.varSerOpen:
-            #self.serialport._close
-        #else:
+        if self.serialport.isOpen:
+            self.serialport._close
+        else:
             self.SetPort()
             try:
                 self.serialport.open()
             except:
                 FormatTb()
-
         self.State()
 
-
     def State(self):
-        self.serialport = Serial
+        #self.serialport = Serial
         d = self.serialport
         self.varBaud.set(self.serialport.baudrate)
-        if d.isOpen(self):
-        #if d.isOpen():
-            if self.Open():
-                text = "\n<<Serial port is open: CTS %s, DSR %s, CD %s>>\n" % (d.getCTS(self), d.getDSR(self), d.getCD(self))
-                cts=d.cts
-                dsr=d.dsr
-                cd=d.cd
-                text = "\n<<Serial port is open: CTS %s, DSR %s, CD %s>>\n" % (cts, dsr, cd)
-                self.write(text.encode())
-                logging.debug(text)
-                self.bOpen.configure(text='Close Port')
-                for w in self.widgetPort:
-                    w.configure(state='disabled')
-            else:
-                self.write("\n<<Serial port is closed>>\n")
-                self.bOpen.configure(text='Open Port')
-                for w in self.widgetPort:
-                    w.configure(state='normal')
+        #if d.is_open(self):
+        if d.isOpen():
+            #if self.Open():
+            text = "\n<<Serial port is open: CTS %s, DSR %s, CD %s>>\n" % (d.getCTS(self), d.getDSR(self), d.getCD(self))
+            #cts=d.cts
+            #dsr=d.dsr
+            #cd=d.cd
+            #text = "\n<<Serial port is open: CTS %s, DSR %s, CD %s>>\n" % (cts, dsr, cd)
+            self.write(text.encode())
+            logging.debug(text)
+            self.bOpen.configure(text='Close Port')
+            for w in self.widgetPort:
+                w.configure(state='disabled')
+        else:
+            self.write("\n<<Serial port is closed>>\n")
+            self.bOpen.configure(text='Open Port')
+            for w in self.widgetPort:
+                w.configure(state='normal')
 
     def ToPort(self, event):
         #if self.serialport.isOpen(self):
@@ -2527,8 +2532,9 @@ class DialogSerial(tkinter.Toplevel):
     def write(self, text):
         if self.logging:
             #try encoding
-            #self.to_bytes(text)							
-            text = text.replace(b'\r', b'')
+            self.to_bytes(text)							
+            #text = text.replace(b'\r', b'')
+            text = text.replace('\r', '')
             
             if self.last_text == '\n' and text[0:1] == '\n':
                 text = text[1:]		# remove a double newline
@@ -2563,4 +2569,3 @@ app.mainloop()
 #if app:
 #	 app.Close()
 #StdErr.printer()
-
