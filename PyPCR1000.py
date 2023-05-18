@@ -459,9 +459,9 @@ class Application(tkinter.Tk):
         b.bind('<Key-Return>', self.SetStation)
 
         b = tkinter.Label(frm, font=lfont, text='Config', bd=1, relief='raised')
-        Help(b, 'Right click to get a configuration menu.')
+        Help(b, 'Click to get a configuration menu.')
         b.pack(side='right', anchor='e')
-        b.bind('<ButtonPress-3>', self.ConfigMenu)
+        b.bind('<ButtonPress-1>', self.ConfigMenu)
 
         self.dispDTMF = tkinter.Label(frm, font=lfont, width=25, anchor='w', text="	 DTMF Tone:")
         self.dispDTMF.pack(side='right', anchor='ne')
