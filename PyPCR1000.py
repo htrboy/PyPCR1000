@@ -2041,6 +2041,8 @@ class PowerButton(tkinter.Canvas):
             self.itemconfig(self.lightbulb, fill=Gray)
         elif num == 1:	# Power is on
             self.itemconfig(self.lightbulb, fill=Green)
+        elif num == 2:  # Radio in standby
+            self.itemconfig(self.lightbulb, fill = Yellow)
         else:		# startup
             self.itemconfig(self.lightbulb, fill=Yellow)
 
