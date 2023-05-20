@@ -15,15 +15,15 @@
 //         }
 //     ]
 // }
-{
-    "version":"0.2.0",
-    "command":"c:\\Python34\\python",
-    "args":["app.py"],
-    "problemMatcher": {
-        "fileLocation": ["relative", "${workspaceRoot}"],
-        "pattern": {
-            "regexp": "^(.*)+s$",
-            "message": 1
-        }
-    }
-}
+// {
+//     "version":"0.2.0",
+//     "command":"c:\\Python34\\python",
+//     "args":["app.py"],
+//     "problemMatcher": {
+//         "fileLocation": ["relative", "${workspaceRoot}"],
+//         "pattern": {
+//             "regexp": "^(.*)+s$",
+//             "message": 1
+//         }
+//     }
+// }

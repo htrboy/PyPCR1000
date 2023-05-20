@@ -34,6 +34,7 @@ from PIL import Image
 import codecs
 import logging
 import csv
+import platform # detect OS
 
 DEBUGGING = 1       # Write debug messages - changing to 'logging' module
 LOGGER = None   # This has a write(text) method for logging messages
@@ -46,6 +47,10 @@ config = configparser.ConfigParser()
 logging.basicConfig(format='%(asctime)s,%(msecs)03d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
     datefmt='%Y-%m-%d:%H:%M:%S',
     level=logging.INFO) #levels: INFO, WARNING, CRITICAL
+
+pform = platform.system()
+if (pform == "Linux"):
+    unix = True
 
 SerialPollMillisecs = 10	# Time to poll serial port
 ScanMillisecs = 100         # Time to pause at each frequency when scanning the band
@@ -265,8 +270,8 @@ class Application(tkinter.Tk):
         StatusBar = tkinter.Canvas(frame, bd=2, relief='groove')
         w, h = GetTextExtent(StatusBar, 'Status', font=bfont)
         StatusBar.statusHeight = h
-        StatusBar.configure(height=h)
-        StatusBar.idText = StatusBar.create_text(2, 2+h/2, text="", anchor='w', font=bfont)
+        StatusBar.configure(height=h+2)
+        StatusBar.idText = StatusBar.create_text(2, 2+h/2, text="", anchor='center', font=bfont)
         StatusBar.pack(side='bottom', anchor='s', fill='x')
         StatusBar.show_help = self.varShowHelp.get()
 
@@ -1040,7 +1045,8 @@ class PCR1000:
         
 
         # Set initial frequency, filter, etc.
-        self.frequency = 1234567890
+        #self.frequency = 1234567890
+        self.frequency = int(IniFile.get('Freq',1000))
         self.mode = 'USB'
         self.intmode = self.dictMode[self.mode]
         self.filter = '2.8k'
@@ -1646,6 +1652,7 @@ class SignalMeter(tkinter.Canvas):
         self.coords(self.rect2, x, 0, 5000, 5000)
 
 class FreqDisplay(tkinter.Canvas):
+    global unix
     color_on  = Red # For frequency High/Low display
     color_off = Black
     def __init__(self, master, cnf={}, **kw):
@@ -1670,7 +1677,11 @@ class FreqDisplay(tkinter.Canvas):
         self.bind('<ButtonPress-1>', self.Button)
 
         # My attempt to change freq value with mousewheel
-        self.bind('<MouseWheel>', self.MouseWheel)
+        if (not unix):
+            self.bind('<MouseWheel>', self.MouseWheel)
+        else:
+            self.bind('<Button-4>', self.MouseWheel)
+            self.bind('<Button-5>', self.MouseWheel)
         oldw = None
         points = 8
 
@@ -1723,12 +1734,12 @@ class FreqDisplay(tkinter.Canvas):
             id = id[0]
             n = self.digits.index(id)
         except: # Not a digit
-            return
-        
-        if event.delta == 120:
+            return        
+        #   unix                Windows
+        if event.num == 4 or event.delta == 120:
             n = 10 ** n # increase frequency
-            
-        elif event.delta == -120:
+        #   unix                Windows    
+        elif event.num == 5 or event.delta == -120:
             n = - (10 ** n) # decrease frequency
         
         for i in range(len(self.digits)):
